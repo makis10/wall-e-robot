@@ -1,5 +1,6 @@
 """
-Speech-to-Text using OpenAI Whisper (runs locally on Pi).
+Speech-to-Text using faster-whisper (runs locally on Pi).
+faster-whisper is optimized for ARM64 and much lighter than openai-whisper.
 Records audio after wake word and transcribes it.
 """
 
@@ -8,7 +9,7 @@ import wave
 import tempfile
 import os
 import pyaudio
-import whisper
+from faster_whisper import WhisperModel
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +33,16 @@ class SpeechToText:
         self.model = None
 
     def _load_model(self):
-        """Lazy load Whisper model (takes a few seconds first time)"""
+        """Lazy load faster-whisper model (downloads on first run)"""
         if self.model is None:
-            logger.info(f"Loading Whisper model '{self.model_name}'...")
-            self.model = whisper.load_model(self.model_name)
-            logger.info("Whisper model loaded ✅")
+            logger.info(f"Loading faster-whisper model '{self.model_name}'...")
+            # cpu + int8 = optimal for Raspberry Pi 4
+            self.model = WhisperModel(
+                self.model_name,
+                device="cpu",
+                compute_type="int8"
+            )
+            logger.info("faster-whisper model loaded ✅")
 
     def record_audio(self) -> str:
         """
@@ -77,23 +83,26 @@ class SpeechToText:
 
     def transcribe(self, audio_path: str) -> str:
         """
-        Transcribe audio file to text using Whisper.
+        Transcribe audio file to text using faster-whisper.
         Returns the transcribed text.
         """
         self._load_model()
 
         logger.info("🔤 Transcribing audio...")
-        result = self.model.transcribe(
+        segments, info = self.model.transcribe(
             audio_path,
-            language="el",       # Greek
-            fp16=False,          # Pi 4 doesn't have GPU
-            verbose=False
+            language="el",          # Greek
+            beam_size=3,            # Lower = faster on Pi
+            vad_filter=True,        # Skip silence automatically
+            vad_parameters=dict(min_silence_duration_ms=500)
         )
+
+        # Collect all segments into one string
+        text = " ".join(segment.text for segment in segments).strip()
 
         # Cleanup temp file
         os.unlink(audio_path)
 
-        text = result["text"].strip()
         logger.info(f"Transcription: '{text}'")
         return text
 
