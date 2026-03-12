@@ -1,7 +1,7 @@
 """
 Speech-to-Text using faster-whisper (runs locally on Pi).
 faster-whisper is optimized for ARM64 and much lighter than openai-whisper.
-Records audio after wake word and transcribes it.
+Records audio after wake command and transcribes it.
 """
 
 import logging

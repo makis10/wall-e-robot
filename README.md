@@ -4,7 +4,7 @@ A Wall-E inspired robot powered by Claude AI, running on Raspberry Pi 4.
 
 ## Features
 
-- 🎤 Wake word detection ("Hey Walle") via Picovoice Porcupine
+- 🎤 Wake command detection ("Hey Walle") via Picovoice Porcupine
 - 🔤 Speech-to-text via OpenAI Whisper (runs locally)
 - 🧠 AI responses via Anthropic Claude (Wall-E personality, Greek language)
 - 🔊 Text-to-speech via gTTS (Greek)
@@ -73,19 +73,19 @@ source venv/bin/activate
 python main.py
 ```
 
-## Wake Word
+## Wake Command
 
-By default, uses "Hey Google" as the wake word (built-in Porcupine keyword).
+By default, uses "Hey Google" as the wake Command (built-in Porcupine keyword).
 
-To use a custom "Hey Walli" wake word:
+To use a custom "Hey Walli" wake command:
 1. Go to https://console.picovoice.ai/
-2. Create a custom wake word
+2. Create a custom wake command
 3. Download the `.ppn` file for Raspberry Pi
 4. Place it in the project root as `hey-walli.ppn`
 
 ## Motor Commands (voice)
 
-Say the wake word, then:
+Say the wake command, then:
 - "πήγαινε μπροστά" → moves forward
 - "πήγαινε πίσω" → moves backward
 - "αριστερά" → turns left

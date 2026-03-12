@@ -1,5 +1,5 @@
 """
-Wake word detection using Picovoice Porcupine.
+Wake command detection using Picovoice Porcupine.
 Listens for 'Hey Google' (built-in) or custom 'Hey Walli' keyword.
 """
 
@@ -28,7 +28,7 @@ import pvporcupine
 logger = logging.getLogger(__name__)
 
 
-class WakeWordDetectorDetector:
+class WakeCommandDetectorDetector:
     def __init__(self, api_key: str, mic_device_index: int = 3):
         self.api_key = api_key
         self.mic_device_index = mic_device_index
@@ -67,7 +67,7 @@ class WakeWordDetectorDetector:
                     keyword_paths=[custom_keyword],
                     sensitivities=[0.7]
                 )
-                logger.info("Using custom 'Hey Walli' wake word ✅")
+                logger.info("Using custom 'Hey Walli' wake command ✅")
             else:
                 self.porcupine = pvporcupine.create(
                     access_key=self.api_key,
@@ -75,7 +75,7 @@ class WakeWordDetectorDetector:
                     sensitivities=[0.5]
                 )
                 logger.warning(
-                    "Custom keyword not found. Using 'Hey Google' as wake word. "
+                    "Custom keyword not found. Using 'Hey Google' as wake command. "
                     "Download 'Hey Walli' from https://console.picovoice.ai/"
                 )
         except Exception as e:
@@ -96,13 +96,13 @@ class WakeWordDetectorDetector:
         )
         logger.info(f"Porcupine audio stream opened on device {device_index} ✅")
 
-    def listen_for_wake_word(self) -> bool:
-        """Block until wake word is detected. Returns True when detected."""
+    def listen_for_wake_command(self) -> bool:
+        """Block until wake command is detected. Returns True when detected."""
         if self.porcupine is None:
             self._init_porcupine()
             self._init_audio()
 
-        logger.info("👂 Listening for wake word...")
+        logger.info("👂 Listening for wake command...")
 
         while True:
             pcm = self.stream.read(
@@ -113,7 +113,7 @@ class WakeWordDetectorDetector:
             keyword_index = self.porcupine.process(pcm)
 
             if keyword_index >= 0:
-                logger.info("🎯 Wake word detected!")
+                logger.info("🎯 Wake command detected!")
                 return True
 
     def cleanup(self):
@@ -125,4 +125,4 @@ class WakeWordDetectorDetector:
             self.audio.terminate()
         if self.porcupine:
             self.porcupine.delete()
-        logger.info("WakeWordDetectorDetector cleaned up")
+        logger.info("WakeCommandDetector cleaned up")

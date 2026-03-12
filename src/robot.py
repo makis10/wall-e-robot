@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import config
-from src.wake_command import WakeWordDetectorDetector
+from src.wake_command import WakeCommandDetector
 from src.speech_to_text import SpeechToText
 from src.claude_brain import ClaudeBrain
 from src.text_to_speech import TextToSpeech
@@ -38,7 +38,7 @@ class WallPiRobot:
         logger.info("Initializing WallPi components...")
 
         # Initialize all subsystems
-        self.wake_command = WakeWordDetectorDetector(
+        self.wake_command = WakeCommandDetector(
             api_key=config.PICOVOICE_API_KEY,
             mic_device_index=config.MIC_DEVICE_INDEX
         )
@@ -105,7 +105,7 @@ class WallPiRobot:
         4. Speak response
         5. Maybe move
         """
-        # Acknowledge wake word with a sound
+        # Acknowledge wake command with a sound
         self.tts.speak("Ναι;")
 
         # Record and transcribe user speech
@@ -147,7 +147,7 @@ class WallPiRobot:
         logger.info("🔄 Entering main loop...")
         while True:
             try:
-                # Wait for wake word
+                # Wait for wake command
                 self.wake_command.listen_for_wake_command()
 
                 # Process the interaction
