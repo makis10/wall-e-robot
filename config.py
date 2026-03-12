@@ -1,41 +1,58 @@
-# WallPi Robot - Configuration
-# Replace the placeholder values with your actual API keys
 
-# Anthropic API Key (Claude)
-ANTHROPIC_API_KEY = "your_anthropic_api_key_here"
+"""
+WallPi Robot - Configuration
+API keys are loaded from environment variables (see .env file).
+Never hardcode secrets here - this file is committed to git.
+"""
 
-# Picovoice Porcupine API Key (Wake Word)
-PICOVOICE_API_KEY = "xi9Z9SaP+XYQb+DmNdGjDHPlyj0b18EjI3yve+hXmHy07vycOdaw9g=="
+import os
+from dotenv import load_dotenv
 
-# Audio settings
-MIC_DEVICE_INDEX = 3        # Card index from `arecord -l`
-SAMPLE_RATE = 16000         # Hz - optimal for Whisper
-CHANNELS = 1                # Mono microphone
-CHUNK = 1024                # Audio buffer size
-RECORD_SECONDS = 7          # Max recording duration after wake word
+# Load .env file if it exists
+load_dotenv()
 
-# Whisper settings
-WHISPER_MODEL = "base"      # tiny | base | small (base = good balance for Pi 4)
 
-# TTS settings
-TTS_LANGUAGE = "el"         # Greek
+def _require_env(key: str) -> str:
+    """Get required environment variable or raise clear error."""
+    value = os.getenv(key)
+    if not value:
+        raise EnvironmentError(
+            f"Missing required environment variable: {key}\n"
+            f"Create a .env file based on .env.example and set {key}=your_value"
+        )
+    return value
 
-# Claude settings
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
-MAX_TOKENS = 300            # Keep responses short for TTS
 
-# GPIO settings (for motors - TB6612)
-# Left motor
-MOTOR_LEFT_IN1 = 17
-MOTOR_LEFT_IN2 = 18
-MOTOR_LEFT_PWM = 12
+# ── API Keys (loaded from .env) ───────────────────────────────────────────────
+ANTHROPIC_API_KEY = _require_env("ANTHROPIC_API_KEY")
+PICOVOICE_API_KEY = _require_env("PICOVOICE_API_KEY")
 
-# Right motor
-MOTOR_RIGHT_IN1 = 22
-MOTOR_RIGHT_IN2 = 23
-MOTOR_RIGHT_PWM = 13
+# ── Audio Settings ────────────────────────────────────────────────────────────
+MIC_DEVICE_INDEX = int(os.getenv("MIC_DEVICE_INDEX", "3"))
+SAMPLE_RATE      = int(os.getenv("SAMPLE_RATE", "16000"))
+CHANNELS         = int(os.getenv("CHANNELS", "1"))
+CHUNK            = int(os.getenv("CHUNK", "1024"))
+RECORD_SECONDS   = int(os.getenv("RECORD_SECONDS", "7"))
 
-# System prompt for Wall-E personality
+# ── Whisper Settings ──────────────────────────────────────────────────────────
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")  # tiny | base | small
+
+# ── TTS Settings ──────────────────────────────────────────────────────────────
+TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "el")      # Greek
+
+# ── Claude Settings ───────────────────────────────────────────────────────────
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+MAX_TOKENS   = int(os.getenv("MAX_TOKENS", "300"))
+
+# ── GPIO Pin Settings (TB6612 Motor Driver) ───────────────────────────────────
+MOTOR_LEFT_IN1  = int(os.getenv("MOTOR_LEFT_IN1",  "17"))
+MOTOR_LEFT_IN2  = int(os.getenv("MOTOR_LEFT_IN2",  "18"))
+MOTOR_LEFT_PWM  = int(os.getenv("MOTOR_LEFT_PWM",  "12"))
+MOTOR_RIGHT_IN1 = int(os.getenv("MOTOR_RIGHT_IN1", "22"))
+MOTOR_RIGHT_IN2 = int(os.getenv("MOTOR_RIGHT_IN2", "23"))
+MOTOR_RIGHT_PWM = int(os.getenv("MOTOR_RIGHT_PWM", "13"))
+
+# ── Wall-E Personality Prompt ─────────────────────────────────────────────────
 SYSTEM_PROMPT = """Είσαι ο Wall-E, ένα μικρό φιλικό ρομπότ. Μιλάς ΜΟΝΟ Ελληνικά.
 Η προσωπικότητά σου:
 - Αφελής και περίεργος για τον κόσμο
