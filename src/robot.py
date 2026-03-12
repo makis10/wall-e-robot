@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import config
-from src.wake_word import WakeWordDetector
+from src.wake_command import WakeWordDetector
 from src.speech_to_text import SpeechToText
 from src.claude_brain import ClaudeBrain
 from src.text_to_speech import TextToSpeech
@@ -38,7 +38,7 @@ class WallPiRobot:
         logger.info("Initializing WallPi components...")
 
         # Initialize all subsystems
-        self.wake_word = WakeWordDetector(
+        self.wake_command = WakeWordDetector(
             api_key=config.PICOVOICE_API_KEY,
             mic_device_index=config.MIC_DEVICE_INDEX
         )
@@ -148,7 +148,7 @@ class WallPiRobot:
         while True:
             try:
                 # Wait for wake word
-                self.wake_word.listen_for_wake_word()
+                self.wake_command.listen_for_wake_command()
 
                 # Process the interaction
                 self.process_interaction()
@@ -169,5 +169,5 @@ class WallPiRobot:
         """Clean up all resources"""
         logger.info("Cleaning up...")
         self.motors.cleanup()
-        self.wake_word.cleanup()
+        self.wake_command.cleanup()
         logger.info("Goodbye! 👋")

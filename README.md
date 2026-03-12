@@ -30,7 +30,7 @@ wall-e-robot/
 ├── .env.example         # Environment variables template
 ├── src/
 │   ├── robot.py         # Main orchestrator
-│   ├── wake_word.py     # Porcupine wake word detection
+│   ├── wake_command.py     # Porcupine wake word detection
 │   ├── speech_to_text.py # Whisper STT
 │   ├── claude_brain.py  # Claude AI integration
 │   ├── text_to_speech.py # gTTS speech output

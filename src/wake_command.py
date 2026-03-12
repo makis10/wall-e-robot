@@ -64,7 +64,7 @@ class WakeWordDetector:
             frames_per_buffer=self.porcupine.frame_length
         )
 
-    def listen_for_wake_word(self) -> bool:
+    def listen_for_wake_command(self) -> bool:
         """
         Block until wake word is detected.
         Returns True when detected.
