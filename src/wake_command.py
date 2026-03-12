@@ -28,7 +28,7 @@ import pvporcupine
 logger = logging.getLogger(__name__)
 
 
-class WakeCommandDetectorDetector:
+class WakeCommandDetector:
     def __init__(self, api_key: str, mic_device_index: int = 3):
         self.api_key = api_key
         self.mic_device_index = mic_device_index
