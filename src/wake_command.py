@@ -1,11 +1,27 @@
 """
 Wake word detection using Picovoice Porcupine.
-Listens for 'Hey Walli' (using 'Hey Siri' as closest built-in keyword,
-or a custom keyword file if available).
+Listens for 'Hey Google' (built-in) or custom 'Hey Walli' keyword.
 """
 
 import logging
 import struct
+import os
+import ctypes
+
+# Suppress ALSA/JACK error spam before importing pyaudio
+ERROR_HANDLER_FUNC = ctypes.CFUNCTYPE(
+    None, ctypes.c_char_p, ctypes.c_int,
+    ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p
+)
+def _py_error_handler(filename, line, function, err, fmt):
+    pass  # Silence all ALSA errors
+
+try:
+    asound = ctypes.cdll.LoadLibrary("libasound.so.2")
+    asound.snd_lib_error_set_handler(ERROR_HANDLER_FUNC(_py_error_handler))
+except Exception:
+    pass
+
 import pyaudio
 import pvporcupine
 
@@ -20,13 +36,28 @@ class WakeWordDetector:
         self.audio = None
         self.stream = None
 
+    def _find_input_device(self) -> int:
+        """Find the correct input device index for PyAudio."""
+        audio = pyaudio.PyAudio()
+        target = self.mic_device_index
+
+        # Try to find device by matching the card index
+        for i in range(audio.get_device_count()):
+            info = audio.get_device_info_by_index(i)
+            if info.get("maxInputChannels", 0) > 0:
+                name = info.get("name", "").lower()
+                logger.info(f"Input device {i}: {name}")
+                if "usb" in name or "pnp" in name:
+                    target = i
+                    logger.info(f"Using USB mic at PyAudio device index {i}")
+                    break
+
+        audio.terminate()
+        return target
+
     def _init_porcupine(self):
-        """Initialize Porcupine with built-in 'Hey Google' keyword as fallback.
-        For production, use a custom 'Hey Walli' keyword from Picovoice Console.
-        """
+        """Initialize Porcupine with built-in or custom keyword."""
         try:
-            # Try using a custom keyword file first (hey-walli.ppn)
-            import os
             custom_keyword = os.path.join(
                 os.path.dirname(__file__), "..", "hey-walli.ppn"
             )
@@ -36,9 +67,8 @@ class WakeWordDetector:
                     keyword_paths=[custom_keyword],
                     sensitivities=[0.7]
                 )
-                logger.info("Using custom 'Hey Walli' wake word")
+                logger.info("Using custom 'Hey Walli' wake word ✅")
             else:
-                # Fallback to built-in keyword
                 self.porcupine = pvporcupine.create(
                     access_key=self.api_key,
                     keywords=["hey google"],
@@ -53,22 +83,21 @@ class WakeWordDetector:
             raise
 
     def _init_audio(self):
-        """Initialize PyAudio stream"""
+        """Initialize PyAudio stream with correct device."""
+        device_index = self._find_input_device()
         self.audio = pyaudio.PyAudio()
         self.stream = self.audio.open(
             rate=self.porcupine.sample_rate,
             channels=1,
             format=pyaudio.paInt16,
             input=True,
-            input_device_index=self.mic_device_index,
+            input_device_index=device_index,
             frames_per_buffer=self.porcupine.frame_length
         )
+        logger.info(f"Porcupine audio stream opened on device {device_index} ✅")
 
-    def listen_for_wake_command(self) -> bool:
-        """
-        Block until wake word is detected.
-        Returns True when detected.
-        """
+    def listen_for_wake_word(self) -> bool:
+        """Block until wake word is detected. Returns True when detected."""
         if self.porcupine is None:
             self._init_porcupine()
             self._init_audio()
@@ -80,9 +109,7 @@ class WakeWordDetector:
                 self.porcupine.frame_length,
                 exception_on_overflow=False
             )
-            pcm = struct.unpack_from(
-                "h" * self.porcupine.frame_length, pcm
-            )
+            pcm = struct.unpack_from("h" * self.porcupine.frame_length, pcm)
             keyword_index = self.porcupine.process(pcm)
 
             if keyword_index >= 0:
@@ -90,7 +117,7 @@ class WakeWordDetector:
                 return True
 
     def cleanup(self):
-        """Release all resources"""
+        """Release all resources."""
         if self.stream:
             self.stream.stop_stream()
             self.stream.close()
