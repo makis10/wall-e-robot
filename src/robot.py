@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import config
-from src.wake_command import WakeWordDetector
+from src.wake_command import WakeWordDetectorDetector
 from src.speech_to_text import SpeechToText
 from src.claude_brain import ClaudeBrain
 from src.text_to_speech import TextToSpeech
@@ -38,7 +38,7 @@ class WallPiRobot:
         logger.info("Initializing WallPi components...")
 
         # Initialize all subsystems
-        self.wake_command = WakeWordDetector(
+        self.wake_command = WakeWordDetectorDetector(
             api_key=config.PICOVOICE_API_KEY,
             mic_device_index=config.MIC_DEVICE_INDEX
         )
