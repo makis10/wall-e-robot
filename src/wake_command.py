@@ -3,31 +3,15 @@ Wake command detection using Picovoice Porcupine.
 Listens for 'Hey Google' (built-in) or custom 'Hey Walli' keyword.
 
 Audio pipeline: mic runs at 44100Hz (native), resampled to 16000Hz for Porcupine.
-Uses a single PyAudio instance to avoid segfault on Raspberry Pi.
 """
 
 import logging
 import os
-import ctypes
 
 import numpy as np
 import soxr
 import pyaudio
 import pvporcupine
-
-# Suppress ALSA/JACK error spam before importing pyaudio
-ERROR_HANDLER_FUNC = ctypes.CFUNCTYPE(
-    None, ctypes.c_char_p, ctypes.c_int,
-    ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p
-)
-def _py_error_handler(filename, line, function, err, fmt):
-    pass  # Silence all ALSA errors
-
-try:
-    asound = ctypes.cdll.LoadLibrary("libasound.so.2")
-    asound.snd_lib_error_set_handler(ERROR_HANDLER_FUNC(_py_error_handler))
-except Exception:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +76,6 @@ class WakeCommandDetector:
         Create a single PyAudio instance, find the USB mic, and open the stream.
         Records at 44100Hz (native) — soxr resamples to 16000Hz for Porcupine.
         """
-        # Single PyAudio instance — reused for device search AND stream open
         self.audio = pyaudio.PyAudio()
         device_index = self._find_usb_device(self.audio)
 
@@ -155,3 +138,4 @@ class WakeCommandDetector:
         if self.porcupine:
             self.porcupine.delete()
         logger.info("WakeCommandDetector cleaned up")
+    
