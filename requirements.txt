@@ -7,3 +7,5 @@ gTTS>=2.5.0
 RPi.GPIO>=0.7.1
 gpiozero>=2.0
 click<=8.2.0
+numpy>=1.24.0
+soxr>=0.3.0
