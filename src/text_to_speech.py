@@ -1,7 +1,8 @@
 """
 Text-to-Speech for WallPi.
-Uses gTTS (Google TTS) for Greek language support,
-with pyttsx3 as offline fallback.
+Uses gTTS (Google TTS) for Greek language support, with espeak as offline fallback.
+
+Runs ffplay in a subprocess to avoid PortAudio state conflicts with Porcupine.
 """
 
 import logging
@@ -18,7 +19,7 @@ class TextToSpeech:
         self._check_dependencies()
 
     def _check_dependencies(self):
-        """Check if required tools are available"""
+        """Check if required tools are available."""
         try:
             import gtts
             self.use_gtts = True
@@ -28,38 +29,47 @@ class TextToSpeech:
             logger.warning("gTTS not found, falling back to espeak")
 
     def speak(self, text: str):
-        """
-        Convert text to speech and play it.
-        Tries gTTS first (better Greek), falls back to espeak.
-        """
+        """Convert text to speech and play it."""
         logger.info(f"🔊 Speaking: '{text}'")
-
         if self.use_gtts:
             self._speak_gtts(text)
         else:
             self._speak_espeak(text)
 
     def _speak_gtts(self, text: str):
-        """Use Google TTS (requires internet)"""
+        """
+        Use Google TTS (requires internet).
+        Saves MP3 to temp file, plays with ffplay via subprocess.
+        ffplay runs fully isolated — no shared PortAudio state with Porcupine.
+        """
         try:
             from gtts import gTTS
 
-            # Save to temp file
             tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+            tmp.close()
+
             tts = gTTS(text=text, lang=self.language, slow=False)
             tts.save(tmp.name)
 
-            # Play with ffplay (part of ffmpeg)
+            # Run ffplay as a completely separate process.
+            # Using subprocess.run (not Popen) ensures it fully exits
+            # and releases all audio resources before we return.
             subprocess.run(
                 ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", tmp.name],
-                check=True
+                check=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
-
-            os.unlink(tmp.name)
 
         except Exception as e:
             logger.error(f"gTTS error: {e}, falling back to espeak")
             self._speak_espeak(text)
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
 
     def _speak_espeak(self, text: str):
         """
@@ -70,26 +80,11 @@ class TextToSpeech:
             subprocess.run(
                 ["espeak", "-v", "el", "-s", "150", "-p", "60", text],
                 check=True,
-                capture_output=True
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         except FileNotFoundError:
             logger.error("espeak not installed. Run: sudo apt install espeak")
         except Exception as e:
             logger.error(f"espeak error: {e}")
-
-    def play_startup_sound(self):
-        """Play a Wall-E style startup beep sequence"""
-        try:
-            # Generate beeps using speaker-test or sox
-            beeps = [
-                ("600", "0.1"), ("800", "0.1"),
-                ("1000", "0.15"), ("800", "0.1"), ("1200", "0.2")
-            ]
-            for freq, duration in beeps:
-                subprocess.run(
-                    ["speaker-test", "-t", "sine", "-f", freq,
-                     "-l", "1", "-p", duration],
-                    capture_output=True, timeout=1
-                )
-        except Exception:
-            pass  # Beeps are optional, don't crash if they fail
