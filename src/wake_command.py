@@ -3,6 +3,7 @@ Wake command detection using Picovoice Porcupine.
 Listens for 'Hey Google' (built-in) or custom 'Hey Walli' keyword.
 
 Audio pipeline: mic runs at 44100Hz (native), resampled to 16000Hz for Porcupine.
+Stream is released after wake command detection so STT can use the mic.
 """
 
 import logging
@@ -26,7 +27,6 @@ class WakeCommandDetector:
         self.audio = None
         self.stream = None
         self.native_chunk = None
-        # Accumulates resampled samples until we have a full porcupine frame
         self._resample_buffer = np.array([], dtype=np.int16)
 
     def _find_usb_device(self, audio: pyaudio.PyAudio) -> int:
@@ -50,6 +50,9 @@ class WakeCommandDetector:
 
     def _init_porcupine(self):
         """Initialize Porcupine with built-in or custom keyword."""
+        if self.porcupine is not None:
+            return  # Already initialized, reuse it
+
         custom_keyword = os.path.join(
             os.path.dirname(__file__), "..", "hey-walli.ppn"
         )
@@ -71,11 +74,8 @@ class WakeCommandDetector:
                 "Download 'Hey Walli' from https://console.picovoice.ai/"
             )
 
-    def _init_audio(self):
-        """
-        Create a single PyAudio instance, find the USB mic, and open the stream.
-        Records at 44100Hz (native) — soxr resamples to 16000Hz for Porcupine.
-        """
+    def _open_stream(self):
+        """Open mic stream. Called before listening, closed after detection."""
         self.audio = pyaudio.PyAudio()
         device_index = self._find_usb_device(self.audio)
 
@@ -91,10 +91,26 @@ class WakeCommandDetector:
             input_device_index=device_index,
             frames_per_buffer=self.native_chunk
         )
+        # Reset buffer on each new stream open
+        self._resample_buffer = np.array([], dtype=np.int16)
         logger.info(
             f"Audio stream: device={device_index}, "
             f"{NATIVE_RATE}Hz → {self.porcupine.sample_rate}Hz (soxr resample) ✅"
         )
+
+    def _close_stream(self):
+        """
+        Close mic stream and release PyAudio.
+        Must be called after wake command detection so STT can use the mic.
+        """
+        if self.stream:
+            self.stream.stop_stream()
+            self.stream.close()
+            self.stream = None
+        if self.audio:
+            self.audio.terminate()
+            self.audio = None
+        logger.info("Mic released for STT ✅")
 
     def _read_resampled_frame(self) -> list:
         """
@@ -114,28 +130,32 @@ class WakeCommandDetector:
         return frame.tolist()
 
     def listen_for_wake_command(self) -> bool:
-        """Block until wake command is detected. Returns True when detected."""
-        if self.porcupine is None:
-            self._init_porcupine()
-            self._init_audio()
+        """
+        Block until wake command is detected.
+        Opens mic stream on entry, closes it on detection so STT can use the mic.
+        Returns True when detected.
+        """
+        self._init_porcupine()
+        self._open_stream()
 
         logger.info("👂 Listening for wake command...")
 
-        while True:
-            pcm = self._read_resampled_frame()
-            keyword_index = self.porcupine.process(pcm)
-            if keyword_index >= 0:
-                logger.info("🎯 Wake command detected!")
-                return True
+        try:
+            while True:
+                pcm = self._read_resampled_frame()
+                keyword_index = self.porcupine.process(pcm)
+                if keyword_index >= 0:
+                    logger.info("🎯 Wake command detected!")
+                    return True
+        finally:
+            # Always release mic so STT can open it
+            self._close_stream()
 
     def cleanup(self):
         """Release all resources."""
-        if self.stream:
-            self.stream.stop_stream()
-            self.stream.close()
-        if self.audio:
-            self.audio.terminate()
+        self._close_stream()
         if self.porcupine:
             self.porcupine.delete()
+            self.porcupine = None
         logger.info("WakeCommandDetector cleaned up")
-    
+        
