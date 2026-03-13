@@ -42,6 +42,7 @@ class TextToSpeech:
         Saves MP3 to temp file, plays with ffplay via subprocess.
         ffplay runs fully isolated — no shared PortAudio state with Porcupine.
         """
+        tmp = None
         try:
             from gtts import gTTS
 
@@ -66,10 +67,11 @@ class TextToSpeech:
             logger.error(f"gTTS error: {e}, falling back to espeak")
             self._speak_espeak(text)
         finally:
-            try:
-                os.unlink(tmp.name)
-            except Exception:
-                pass
+            if tmp is not None:
+                try:
+                    os.unlink(tmp.name)
+                except Exception:
+                    pass
 
     def _speak_espeak(self, text: str):
         """
