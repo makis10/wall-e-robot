@@ -135,10 +135,12 @@ class WallPiRobot:
         """Play startup animation and greeting"""
         logger.info("🤖 Running startup sequence...")
         self.motors.happy_dance()
-        time.sleep(0.5)
         self.tts.speak(
-            "Γεια σου! Είμαι ο Wall-E! Πες 'Hey Walli' για να με ξυπνήσεις!"
+            "Γεια σου! Είμαι ο Wall-E! Πες 'Hey Wall-E' για να με ξυπνήσεις!"
         )
+        # Wait for ALSA to fully release the audio device after TTS playback
+        # before Porcupine tries to open the microphone stream
+        time.sleep(2)
 
     def run(self):
         """Main robot loop"""
