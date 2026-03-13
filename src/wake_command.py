@@ -3,6 +3,7 @@ Wake command detection using Picovoice Porcupine.
 Listens for 'Hey Google' (built-in) or custom 'Hey Walli' keyword.
 
 Audio pipeline: mic runs at 44100Hz (native), resampled to 16000Hz for Porcupine.
+Uses a single PyAudio instance to avoid segfault on Raspberry Pi.
 """
 
 import logging
@@ -44,9 +45,11 @@ class WakeCommandDetector:
         # Accumulates resampled samples until we have a full porcupine frame
         self._resample_buffer = np.array([], dtype=np.int16)
 
-    def _find_input_device(self) -> int:
-        """Find USB mic PyAudio device index by name."""
-        audio = pyaudio.PyAudio()
+    def _find_usb_device(self, audio: pyaudio.PyAudio) -> int:
+        """
+        Find USB mic device index using an existing PyAudio instance.
+        Never creates or terminates PyAudio here — caller owns the instance.
+        """
         target = 1  # Safe fallback
 
         for i in range(audio.get_device_count()):
@@ -59,7 +62,6 @@ class WakeCommandDetector:
                     logger.info(f"Using USB mic at PyAudio device index {i}")
                     break
 
-        audio.terminate()
         return target
 
     def _init_porcupine(self):
@@ -87,12 +89,12 @@ class WakeCommandDetector:
 
     def _init_audio(self):
         """
-        Open mic at native 44100Hz.
-        Porcupine needs 16000Hz — we resample each chunk in software.
-        native_chunk: how many 44100Hz frames equal one porcupine frame at 16000Hz.
+        Create a single PyAudio instance, find the USB mic, and open the stream.
+        Records at 44100Hz (native) — soxr resamples to 16000Hz for Porcupine.
         """
-        device_index = self._find_input_device()
+        # Single PyAudio instance — reused for device search AND stream open
         self.audio = pyaudio.PyAudio()
+        device_index = self._find_usb_device(self.audio)
 
         self.native_chunk = int(
             self.porcupine.frame_length * NATIVE_RATE / self.porcupine.sample_rate
@@ -113,8 +115,8 @@ class WakeCommandDetector:
 
     def _read_resampled_frame(self) -> list:
         """
-        Read raw audio at 44100Hz, resample to 16000Hz via soxr,
-        buffer samples and return exactly porcupine.frame_length int16 values.
+        Read raw 44100Hz audio, resample to 16000Hz via soxr,
+        buffer and return exactly porcupine.frame_length int16 samples.
         """
         while len(self._resample_buffer) < self.porcupine.frame_length:
             raw = self.stream.read(self.native_chunk, exception_on_overflow=False)
