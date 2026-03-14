@@ -60,14 +60,14 @@ class WakeCommandDetector:
             self.porcupine = pvporcupine.create(
                 access_key=self.api_key,
                 keyword_paths=[custom_keyword],
-                sensitivities=[0.9]
+                sensitivities=[0.75]
             )
             logger.info("Using custom 'Hey Walli' wake command ✅")
         else:
             self.porcupine = pvporcupine.create(
                 access_key=self.api_key,
                 keywords=["hey google"],
-                sensitivities=[0.9]
+                sensitivities=[0.75]
             )
             logger.warning(
                 "Custom keyword not found. Using 'Hey Google' as wake command. "
