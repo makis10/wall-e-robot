@@ -107,9 +107,11 @@ class WallPiRobot:
         """
         # Acknowledge wake command with a sound
         self.tts.speak("Ναι;")
-
+        time.sleep(1)
         # Record and transcribe user speech
         text = self.stt.listen_and_transcribe()
+
+        time.sleep(1)
 
         if not text or len(text.strip()) < 2:
             self.tts.speak("Δεν σε άκουσα καλά. Ξαναπές το!")
@@ -127,7 +129,7 @@ class WallPiRobot:
         self.tts.speak(response)
 
         # Happy dance if it's a greeting
-        greetings = ["γεια", "hello", "χαίρε", "καλημέρα", "καλησπέρα"]
+        greetings = ["γεια", "hello", "χαίρεται", "καλημέρα", "καλησπέρα"]
         if any(g in text.lower() for g in greetings):
             self.motors.happy_dance()
 
@@ -172,4 +174,4 @@ class WallPiRobot:
         logger.info("Cleaning up...")
         self.motors.cleanup()
         self.wake_command.cleanup()
-        logger.info("Goodbye! 👋")
+        logger.info("Αντίο! 👋")
